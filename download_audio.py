@@ -30,12 +30,19 @@ episode_uri = args.episodes
 wav_dir = args.wavs
 
 # Load episode data
-table = np.loadtxt(episode_uri, dtype=str, delimiter=", ")
+table = np.loadtxt(episode_uri, dtype=str, delimiter=",")
+table = np.char.lstrip(table)
 urls = table[:,2]
 n_items = len(urls)
 
 audio_types = [".mp3", ".m4a", ".mp4"]
 
+def download_audio(url, out_path):
+    try:
+        subprocess.run(['wget', '-O', out_path, url], check=True)
+        print("Download completed.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
 
 for i in range(n_items):
 	# Get show/episode IDs
@@ -64,13 +71,11 @@ for i in range(n_items):
 	print("Processing", show_abrev, ep_idx)
 	# Download raw audio file. This could be parallelized.
 	if not os.path.exists(audio_path_orig):
-		line = f"wget -O {audio_path_orig} {episode_url}"
-		process = subprocess.Popen([(line)],shell=True)
-		process.wait()
+		download_audio(url=episode_url, out_path=audio_path_orig)
 
 	# Convert to 16khz mono wav file
-	line = f"ffmpeg -i {audio_path_orig} -ac 1 -ar 16000 {wav_path}"
-	process = subprocess.Popen([(line)],shell=True)
+	command = ['ffmpeg', '-i', audio_path_orig, '-ac', '1', '-ar', '16000', wav_path]
+	process = subprocess.Popen(command,shell=True)
 	process.wait()
 
 	# Remove the original mp3/m4a file
